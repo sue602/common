@@ -13,10 +13,14 @@ void common_init();
 
 //uninit function
 void common_fini();
+
 //
-void * easy_malloc(unsigned int sz);
+void * easy_malloc(uint32_t sz);
 
 //
 void easy_free(void * p);
+
+//
+void * easy_realloc(char * p,uint32_t sz);
 
 #endif /* INCLUDE_COMMON_H_ */
