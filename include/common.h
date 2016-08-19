@@ -21,6 +21,6 @@ void * easy_malloc(uint32_t sz);
 void easy_free(void * p);
 
 //
-void * easy_realloc(char * p,uint32_t sz);
+void * easy_realloc(void * p,uint32_t sz);
 
 #endif /* INCLUDE_COMMON_H_ */

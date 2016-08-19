@@ -160,7 +160,7 @@ void easy_free(void * p)
 	SPIN_UNLOCK(&g_bufs[buft]);
 }
 
-void * easy_realloc(char * p,uint32_t sz)
+void * easy_realloc(void * p,uint32_t sz)
 {
 	if (NULL == p)
 		return easy_malloc(sz);
