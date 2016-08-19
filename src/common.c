@@ -13,18 +13,28 @@
 
 static short g_common_inited = 0;
 
-const int MALLOC_NUMBERS = 500;
+const int MALLOC_NUMBERS = 1000;
+
+const short CHAR_SIZE = sizeof(char);
+
+const short BASE_2N	= 16;
 
 enum buf_type{
-	BUF1K 			= 0,
-	BUF2K 			= 1,
-	BUF4K 			= 2,
-	BUF8K 			= 3,
-	BUF16K 			= 4,
-	BUF32K			= 5,
-	BUF64K			= 6,
-	BUF128K			= 7,
-	BUF_TYPE_MAX	= 8
+	BUF16			= 0,
+	BUF32			= 1,
+	BUF64			= 2,
+	BUF128			= 3,
+	BUF256			= 4,
+	BUF512			= 5,
+	BUF1K 			= 6,
+	BUF2K 			= 7,
+	BUF4K 			= 8,
+	BUF8K 			= 9,
+	BUF16K 			= 10,
+	BUF32K			= 11,
+	BUF64K			= 12,
+	BUF128K			= 13,
+	BUF_TYPE_MAX	= 14
 };
 
 struct abuf{
@@ -45,7 +55,7 @@ void common_init()
 	g_common_inited = 1;
 
 	short i=0;
-	int sz = 1024;
+	int sz = BASE_2N;
 	for(;i<BUF_TYPE_MAX;i++)
 	{
 		g_bufs[i].data = listCreate();
@@ -53,10 +63,9 @@ void common_init()
 		short weight = MALLOC_NUMBERS / (i+1) ;
 		for(;j<weight;j++)
 		{
-			void * buf = zmalloc(sz+sizeof(char));
+			void * buf = zmalloc(sz+CHAR_SIZE);
 			*( (char*)buf) = (short) i;
-			buf = buf + sizeof(char);
-			listAddNodeTail(g_bufs[i].data,buf);
+			listAddNodeTail(g_bufs[i].data, (buf + CHAR_SIZE) );
 		}
 		sz = sz * 2;
 	}
@@ -77,8 +86,8 @@ void common_fini()
 
 static enum buf_type _check_sz(unsigned int sz)
 {
-	enum buf_type buft = BUF1K;
-	unsigned int test_sz = 1024;
+	enum buf_type buft = BUF16;
+	unsigned int test_sz = BASE_2N;
 	do
 	{
 		if(test_sz >= sz)
@@ -98,11 +107,10 @@ void * easy_malloc(unsigned int sz)
 	void * buf = NULL;
 	if(0 == listLength(g_bufs[buft].data))
 	{
-		unsigned int malloc_sz = (buft+1) * 1024;
-		buf = zmalloc(malloc_sz+sizeof(char));
+		unsigned int malloc_sz = (buft+1) * BASE_2N;
+		buf = zmalloc(malloc_sz+CHAR_SIZE);
 		*( (char*)buf) = (short) buft;
-		buf = buf + sizeof(char);
-		listAddNodeTail(g_bufs[buft].data,buf);
+		listAddNodeTail(g_bufs[buft].data,(buf + CHAR_SIZE) );
 	}
 	listNode * node = listFirst(g_bufs[buft].data);
 	buf = node->value;
@@ -113,13 +121,13 @@ void * easy_malloc(unsigned int sz)
 	}
 	listDelNode(g_bufs[buft].data,node);
 	SPIN_UNLOCK(&g_bufs[buft]);
-
+	//printf("easy malloc %p ,type=%d\n",buf,buft);
 	return buf;
 }
 
 void easy_free(void * p)
 {
-	short type = * ( (char*)(p-sizeof(char)) );
+	short type = * ( (char*)(p-CHAR_SIZE) );
 	if(type < 0 || type >=BUF_TYPE_MAX )
 	{
 		printf("easy free error,size=%d,p=%p",type,p);
