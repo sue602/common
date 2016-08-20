@@ -44,12 +44,12 @@ enum buf_type{
 	BUF_TYPE_MAX	= 14
 };
 
-struct abuf{
+struct common_buf{
 	struct spinlock lock;
 	list * data;
 };
 
-static struct abuf g_bufs[BUF_TYPE_MAX-1];
+static struct common_buf g_bufs[BUF_TYPE_MAX];
 
 void common_init()
 {
@@ -58,7 +58,7 @@ void common_init()
 		printf("common init already \n");
 		return;
 	}
-	printf("size_t =%d \n",COMMON_PRE_SIZE);
+
 	g_common_inited = 1;
 
 	short i=0;
@@ -66,6 +66,7 @@ void common_init()
 	for(;i<BUF_TYPE_MAX;i++)
 	{
 		g_bufs[i].data = listCreate();
+		SPIN_INIT(&g_bufs[i])
 		short j = 0;
 		short weight = MALLOC_NUMBERS / (i+1) ;
 		for(;j<weight;j++)
@@ -80,18 +81,20 @@ void common_init()
 
 void common_fini()
 {
-	int i=0;
+	short i=0;
 	for(;i<BUF_TYPE_MAX;i++)
 	{
-		SPIN_LOCK(&g_bufs[i]);
+		SPIN_LOCK(&g_bufs[i])
 		//设置释放函数
 		g_bufs[i].data->free = zfree;
 		//release
 		listRelease(g_bufs[i].data);
-
+		//unlock and destroy
 		SPIN_UNLOCK(&g_bufs[i])
+		SPIN_DESTROY(&g_bufs[i])
 	}
 	g_common_inited = 0;
+	printf("common_fini finish\n");
 }
 
 static enum buf_type _check_sz(uint32_t sz)
@@ -112,7 +115,7 @@ void * easy_malloc(uint32_t sz)
 {
 	enum buf_type buft = _check_sz(sz+COMMON_PRE_SIZE);//预先找最合适大小
 
-	SPIN_LOCK(&g_bufs[buft]);
+	SPIN_LOCK(&g_bufs[buft])
 
 	void * buf = NULL;
 	if(0 == listLength(g_bufs[buft].data))
@@ -131,7 +134,7 @@ void * easy_malloc(uint32_t sz)
 		exit(0);
 	}
 	listDelNode(g_bufs[buft].data,node);
-	SPIN_UNLOCK(&g_bufs[buft]);
+	SPIN_UNLOCK(&g_bufs[buft])
 //	printf("easy malloc %p ,type=%d ,sz=%d make int=%d \n",buf,buft,sz,MAKE_PREFIX_SIZE(buft,sz));
 	return buf+COMMON_PRE_SIZE;
 }
@@ -148,16 +151,16 @@ void easy_free(void * p)
 	}
 	enum buf_type buft = type ;
 
-	SPIN_LOCK(&g_bufs[buft]);
+	SPIN_LOCK(&(g_bufs[buft]))
 
 	printf("easy free %p ,size=%d,type=%d pre_data=%d\n",p,oldsize,type,pre_data);
 	//printf("before free=%d\n",listLength(g_bufs[buft].data));
 
-	//listAddNodeTail(g_bufs[buft].data,p-COMMON_PRE_SIZE);
-	listAddNodeHead(g_bufs[buft].data,p-COMMON_PRE_SIZE);
+	listAddNodeTail(g_bufs[buft].data,p-COMMON_PRE_SIZE);
+
 	//printf("free add=%d\n\n",listLength(g_bufs[buft].data));
 
-	SPIN_UNLOCK(&g_bufs[buft]);
+	SPIN_UNLOCK(&(g_bufs[buft]))
 }
 
 void * easy_realloc(void * p,uint32_t sz)
