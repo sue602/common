@@ -169,8 +169,8 @@ void easy_free(void * p)
 	printf("easy free %p ,size=%d,type=%d pre_data=%d\n",p,oldsize,type,pre_data);
 	//printf("before free=%d\n",listLength(g_bufs[buft].data));
 
-	listAddNodeHead(g_bufs[buft].data,p);
-//	listAddNodeTail(g_bufs[buft].data,p);
+//	listAddNodeHead(g_bufs[buft].data,p);
+	listAddNodeTail(g_bufs[buft].data,p);
 
 	//printf("free add=%d\n\n",listLength(g_bufs[buft].data));
 
