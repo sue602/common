@@ -106,6 +106,11 @@ void common_fini()
 
 static enum buf_type _check_sz(uint32_t sz)
 {
+	if(sz > (BUF_TYPE_MAX) * BASE_2N)
+	{
+		printf("check buf size error,size=%d\n",sz);
+		exit(0);
+	}
 	enum buf_type buft = BUF16;
 	unsigned int test_sz = BASE_2N;
 	do
