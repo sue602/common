@@ -122,12 +122,12 @@ void * easy_malloc(uint32_t sz)
 	{
 		unsigned int malloc_sz = (buft+1) * BASE_2N;
 		void * allocbuf = zmalloc(malloc_sz);//2^N
-		*( (common_uint32*) allocbuf ) = MAKE_PREFIX_SIZE(buft,sz);
 		listAddNodeTail(g_bufs[buft].data,allocbuf);
 	}
 	listNode * node = listFirst(g_bufs[buft].data);
 	buf = node->value;
-	*( (common_uint32*) (buf) ) = MAKE_PREFIX_SIZE(buft,sz);
+	size_t len = zmalloc_size(buf);
+	*( (common_uint32*) (buf+len-COMMON_PRE_SIZE) ) = MAKE_PREFIX_SIZE(buft,sz);
 	if(NULL == buf)
 	{
 		printf("easy malloc error ,size =%d\n",sz);
@@ -135,13 +135,14 @@ void * easy_malloc(uint32_t sz)
 	}
 	listDelNode(g_bufs[buft].data,node);
 	SPIN_UNLOCK(&g_bufs[buft])
-//	printf("easy malloc %p ,type=%d ,sz=%d make int=%d \n",buf,buft,sz,MAKE_PREFIX_SIZE(buft,sz));
-	return buf+COMMON_PRE_SIZE;
+	printf("easy malloc %p ,type=%d ,sz=%d make int=%d len=%d\n",buf,buft,sz,MAKE_PREFIX_SIZE(buft,sz),len);
+	return buf;
 }
 
 void easy_free(void * p)
 {
-	common_uint32 pre_data = * ( (common_uint32*)(p-COMMON_PRE_SIZE) );
+	size_t len = zmalloc_size(p);
+	common_uint32 pre_data = * ( (common_uint32*)(p+len-COMMON_PRE_SIZE) );
 	short type = PRE_TYPE(pre_data);
 	size_t oldsize = PRE_SIZE(pre_data);
 	if(type < 0 || type >=BUF_TYPE_MAX )
@@ -156,7 +157,8 @@ void easy_free(void * p)
 	printf("easy free %p ,size=%d,type=%d pre_data=%d\n",p,oldsize,type,pre_data);
 	//printf("before free=%d\n",listLength(g_bufs[buft].data));
 
-	listAddNodeTail(g_bufs[buft].data,p-COMMON_PRE_SIZE);
+	listAddNodeHead(g_bufs[buft].data,p);
+//	listAddNodeTail(g_bufs[buft].data,p);
 
 	//printf("free add=%d\n\n",listLength(g_bufs[buft].data));
 
@@ -173,8 +175,8 @@ void * easy_realloc(void * p,uint32_t sz)
 		easy_free(p);
 		return NULL;
 	}
-
-	common_uint32 pre_data = * ( (common_uint32*)(p-COMMON_PRE_SIZE) );
+	size_t len = zmalloc_size(p);
+	common_uint32 pre_data = * ( (common_uint32*)(p+len-COMMON_PRE_SIZE) );
 	short type = PRE_TYPE(pre_data);
 	size_t oldsize = PRE_SIZE(pre_data);
 	if(type < 0 || type >=BUF_TYPE_MAX )
