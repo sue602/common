@@ -16,6 +16,7 @@ typedef uint32_t common_uint32;
 #define MAKE_PREFIX_SIZE(t,sz) ( (t<<24) | sz )
 #define PRE_TYPE(makesize) ( makesize>>24 )
 #define PRE_SIZE(makesize) (makesize & 0x00ffffff )
+#define POW2(n) (1<<(n+4)) //begin is BUF16 = 2^4
 
 static short g_common_inited = 0;
 
@@ -23,8 +24,6 @@ const int MALLOC_NUMBERS = 1000;
 
 const short CHAR_SIZE = sizeof(char);
 const short COMMON_PRE_SIZE = sizeof(common_uint32);
-
-const short BASE_2N	= 16;
 
 enum buf_type{
 	BUF16			= 0,
@@ -69,7 +68,6 @@ void common_init()
 	g_common_inited = 1;
 
 	short i=0;
-	int sz = BASE_2N;
 	for(;i<BUF_TYPE_MAX;i++)
 	{
 		g_bufs[i].data = listCreate();
@@ -78,11 +76,11 @@ void common_init()
 		short weight = MALLOC_NUMBERS / (i+1) ;
 		for(;j<weight;j++)
 		{
+			int sz = POW2(i);
 			void * allocbuf = zmalloc(sz);//2^N
 			*( (common_uint32*)allocbuf) = MAKE_PREFIX_SIZE(i,sz);
 			listAddNodeTail(g_bufs[i].data, allocbuf );
 		}
-		sz = sz * 2;
 	}
 }
 
@@ -106,19 +104,19 @@ void common_fini()
 
 static enum buf_type _check_sz(uint32_t sz)
 {
-	if(sz > (BUF_TYPE_MAX) * BASE_2N)
+	if(sz > POW2(BUF_TYPE_MAX) )
 	{
 		printf("check buf size error,size=%d\n",sz);
 		exit(0);
 	}
 	enum buf_type buft = BUF16;
-	unsigned int test_sz = BASE_2N;
+	unsigned int test_sz = POW2(buft);
 	do
 	{
 		if(test_sz >= sz)
 			break;
-		test_sz = test_sz * 2;
 		buft = buft + 1;
+		test_sz = POW2(buft);
 	}while(1);
 	return buft;
 }
@@ -132,7 +130,7 @@ void * easy_malloc(uint32_t sz)
 	void * buf = NULL;
 	if(0 == listLength(g_bufs[buft].data))
 	{
-		unsigned int malloc_sz = (buft+1) * BASE_2N;
+		unsigned int malloc_sz = POW2(buft);
 		void * allocbuf = zmalloc(malloc_sz);//2^N
 		listAddNodeTail(g_bufs[buft].data,allocbuf);
 	}
@@ -198,7 +196,7 @@ void * easy_realloc(void * p,uint32_t sz)
 	}
 	enum buf_type buft = type ;
 
-	unsigned int malloc_sz = (buft+1) * BASE_2N;
+	unsigned int malloc_sz = POW2(buft);
 	if(sz > oldsize && sz > malloc_sz )
 	{
 		void * oldp = p;
