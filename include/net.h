@@ -1,5 +1,8 @@
-/*
- * Copyright (c) 2009-2012, Salvatore Sanfilippo <antirez at gmail dot com>
+/* Extracted from anet.c to work properly with Hiredis error reporting.
+ *
+ * Copyright (c) 2006-2011, Salvatore Sanfilippo <antirez at gmail dot com>
+ * Copyright (c) 2010-2011, Pieter Noordhuis <pcnoordhuis at gmail dot com>
+ *
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,55 +30,22 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _REDIS_FMACRO_H
-#define _REDIS_FMACRO_H
+#ifndef __NET_H
+#define __NET_H
 
-#define _BSD_SOURCE
+#include "hiredis.h"
 
-#if defined(__linux__)
-#define _GNU_SOURCE
-#define _DEFAULT_SOURCE
+#if defined(__sun) || defined(_AIX)
+#define AF_LOCAL AF_UNIX
 #endif
 
-#if defined(_AIX)
-#define _ALL_SOURCE
-#endif
-
-#if defined(__linux__) || defined(__OpenBSD__)
-#define _XOPEN_SOURCE 700
-/*
- * On NetBSD, _XOPEN_SOURCE undefines _NETBSD_SOURCE and
- * thus hides inet_aton etc.
- */
-#elif !defined(__NetBSD__)
-#define _XOPEN_SOURCE
-#endif
-
-#if defined(__sun)
-#define _POSIX_C_SOURCE 199506L
-#endif
-
-#define _LARGEFILE_SOURCE
-#define _FILE_OFFSET_BITS 64
-
-#if !defined(_BSD_SOURCE)
-#define _BSD_SOURCE
-#endif
-
-#if defined(_AIX)
-#define _ALL_SOURCE
-#endif
-
-#if defined(__sun__)
-#define _POSIX_C_SOURCE 200112L
-#elif defined(__linux__) || defined(__OpenBSD__) || defined(__NetBSD__)
-#define _XOPEN_SOURCE 600
-#else
-#define _XOPEN_SOURCE
-#endif
-
-#if __APPLE__ && __MACH__
-#define _OSX
-#endif
+int redisCheckSocketError(redisContext *c);
+int redisContextSetTimeout(redisContext *c, const struct timeval tv);
+int redisContextConnectTcp(redisContext *c, const char *addr, int port, const struct timeval *timeout);
+int redisContextConnectBindTcp(redisContext *c, const char *addr, int port,
+                               const struct timeval *timeout,
+                               const char *source_addr);
+int redisContextConnectUnix(redisContext *c, const char *path, const struct timeval *timeout);
+int redisKeepAlive(redisContext *c, int interval);
 
 #endif
